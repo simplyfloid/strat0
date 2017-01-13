@@ -198,27 +198,10 @@ echo "${GREEN}...done${WHITE}"
 
 
 ##############################################################
-##  Stratux USB devices udev rules
+##  SSH key
 ##############################################################
 echo
-echo "${YELLOW}**** Stratux USB devices udev rules to /etc/udev/rules.d/10-stratux.rules *****${WHITE}"
-
-cat <<EOT > /etc/udev/rules.d/10-stratux.rules
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a8", SYMLINK+="ublox8"
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a7", SYMLINK+="ublox7"
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="1546", ATTRS{idProduct}=="01a6", SYMLINK+="ublox6"
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", SYMLINK+="prolific%n"
-SUBSYSTEMS=="usb", ATTRS{interface}=="Stratux Serialout", SYMLINK+="serialout%n"
-EOT
-
-echo "${GREEN}...done${WHITE}"
-
-
-##############################################################
-##  SSH setup and config
-##############################################################
-echo
-echo "${YELLOW}**** SSH setup and config... *****${WHITE}"
+echo "${YELLOW}**** SSH key... *****${WHITE}"
 
 if [ ! -d /etc/ssh/authorized_keys ]; then
     mkdir -p /etc/ssh/authorized_keys
@@ -229,9 +212,75 @@ cp -f ${SCRIPTDIR}/files/root /etc/ssh/authorized_keys/root
 chown root.root /etc/ssh/authorized_keys/root
 chmod 644 /etc/ssh/authorized_keys/root
 
+echo "${GREEN}...done${WHITE}"
+
+
+##############################################################
+## Copying motd file
+##############################################################
+echo
+echo "${YELLOW}**** Copying motd file... *****${WHITE}"
+
+cp -f ${SCRIPTDIR}/files/motd /etc/motd
+
+echo "${GREEN}...done${WHITE}"
+
+
+##############################################################
+##  SDR tool script
+##############################################################
+echo
+echo "${YELLOW}**** Copying the SDR tool script... *****${WHITE}"
+
+chmod 755 ${SCRIPTDIR}/files/sdr-tool.sh 
+cp -f ${SCRIPTDIR}/files/sdr-tool.sh /usr/sbin/sdr-tool.sh
+
+echo "${GREEN}...done${WHITE}"
+
+
+##############################################################
+##  uavionix udev rules
+##############################################################
+echo
+echo "${YELLOW}**** uavionix udev rules to /etc/udev/rules.d/99-uavionix.rules *****${WHITE}"
+
+cp -f  ${SCRIPTDIR}/files/99-uavionix.rules /etc/udev/rules.d
+
+echo "${GREEN}...done${WHITE}"
+
+
+##############################################################
+## Copying fancontrol.py file
+##############################################################
+echo
+echo "${YELLOW}**** Copying fancontrol.py file... *****${WHITE}"
+
+chmod 755 ${SCRIPTDIR}/files/fancontrol.py
+cp -f ${SCRIPTDIR}/files/fancontrol.py /usr/bin/fancontrol.py
+
+echo "${GREEN}...done${WHITE}"
+
+
+##############################################################
+##  SSHD config
+##############################################################
+echo
+echo "${YELLOW}**** SSHD config... *****${WHITE}"
+
 cp -n /etc/ssh/sshd_config{,.bak}
 cp -f ${SCRIPTDIR}/files/sshd_config /etc/ssh/sshd_config
 rm -f /usr/share/dbus-1/system-services/fi.epitest.hostap.WPASupplicant.service
+
+echo "${GREEN}...done${WHITE}"
+
+
+##############################################################
+##  Stratux udev rules
+##############################################################
+echo
+echo "${YELLOW}**** Stratux udev rules to /etc/udev/rules.d/10-stratux.rules *****${WHITE}"
+
+cp -f  ${SCRIPTDIR}/files/10-stratux.rules /etc/udev/rules.d
 
 echo "${GREEN}...done${WHITE}"
 
@@ -242,21 +291,9 @@ echo "${GREEN}...done${WHITE}"
 echo
 echo "${YELLOW}**** Hardware blacklisting... *****${WHITE}"
 
-if ! grep -q "blacklist dvb_usb_rtl28xxu" "/etc/modprobe.d/rtl-sdr-blacklist.conf"; then
-    echo blacklist dvb_usb_rtl28xxu >>/etc/modprobe.d/rtl-sdr-blacklist.conf
-fi
+cp -f ${SCRIPTDIR}/files/rtl-sdr-blacklist.conf /etc/modprobe.d/
 
-if ! grep -q "blacklist e4000" "/etc/modprobe.d/rtl-sdr-blacklist.conf"; then
-    echo blacklist e4000 >>/etc/modprobe.d/rtl-sdr-blacklist.conf
-fi
-
-if ! grep -q "blacklist rtl2832" "/etc/modprobe.d/rtl-sdr-blacklist.conf"; then
-    echo blacklist rtl2832 >>/etc/modprobe.d/rtl-sdr-blacklist.conf
-fi
-
-if ! grep -q "blacklist dvb_usb_rtl2832u" "/etc/modprobe.d/rtl-sdr-blacklist.conf"; then
-    echo blacklist dvb_usb_rtl2832u >>/etc/modprobe.d/rtl-sdr-blacklist.conf
-fi
+echo "${GREEN}...done${WHITE}"
 
 
 ##############################################################
@@ -389,6 +426,10 @@ echo "${YELLOW}**** Stratux build and installation... *****${WHITE}"
 
 cd /root
 
+#### install go-sqlite3 (speeds up Stratux builds).
+go get github.com/mattn/go-sqlite3
+go install github.com/mattn/go-sqlite3
+
 rm -rf stratux
 git clone https://github.com/cyoung/stratux --recursive
 cd stratux
@@ -466,7 +507,7 @@ echo "${YELLOW}**** Setup /root/.stxAliases *****${WHITE}"
 if [ -f "/root/stratux/image/stxAliases.txt" ]; then
     cp /root/stratux/image/stxAliases.txt /root/.stxAliases
 else
-    cp ${SCRIPTDIR}/files/stxAliases.txt /root/.stxAliases
+    cp -f ${SCRIPTDIR}/files/stxAliases.txt /root/.stxAliases
 fi
 
 if [ ! -f "/root/.stxAliases" ]; then
@@ -483,6 +524,16 @@ echo "${GREEN}...done${WHITE}"
 echo
 echo "${YELLOW}**** Add .stxAliases command to /root/.bashrc *****${WHITE}"
 
+# This will allow users to keep an alias file after this file is added
+if ! grep -q ".aliases" "/root/.bashrc"; then
+cat <<EOT >> /root/.bashrc
+if [ -f /root/.aliases ]; then
+. /root/.stxAliases
+fi
+EOT
+fi
+
+# Useful aliases for stratux debugging
 if ! grep -q ".stxAliases" "/root/.bashrc"; then
 cat <<EOT >> /root/.bashrc
 if [ -f /root/.stxAliases ]; then
@@ -502,37 +553,28 @@ echo "${YELLOW}**** WiFi Access Point setup... *****${WHITE}"
 
 . ${SCRIPTDIR}/wifi-ap.sh
 
-
-##############################################################
-## Copying motd file
-##############################################################
-echo
-echo "${YELLOW}**** Copying motd file... *****${WHITE}"
-
-cp ${SCRIPTDIR}/files/motd /etc/motd
-
 echo "${GREEN}...done${WHITE}"
 
-##############################################################
-## Copying rc.local file
-##############################################################
-#echo
-#echo "${YELLOW}**** Copying rc.local file... *****${WHITE}"
-
-#chmod 755 ${SCRIPTDIR}/files/rc.local
-#cp ${SCRIPTDIR}/files/rc.local /usr/bin/rc.local
-
-#echo "${GREEN}...done${WHITE}"
-
 
 ##############################################################
-## Copying fancontrol.py file
+## Copying start-up scripts
 ##############################################################
 echo
-echo "${YELLOW}**** Copying fancontrol.py file... *****${WHITE}"
+echo "${YELLOW}**** Copying rc.local file... *****${WHITE}"
 
-chmod 755 ${SCRIPTDIR}/files/fancontrol.py
-cp ${SCRIPTDIR}/files/fancontrol.py /usr/bin/fancontrol.py
+chmod 755 ${SCRIPTDIR}/files/rc.local
+cp -f ${SCRIPTDIR}/files/rc.local /usr/bin/rc.local
+
+
+echo "${YELLOW}**** Copying __lib__systemd__system__stratux.service file... *****${WHITE}"
+
+chmod 755 ${SCRIPTDIR}/files/__lib__systemd__system__stratux.service
+cp -f ${SCRIPTDIR}/files/__lib__systemd__system__stratux.service /lib/systemd/system/stratux.service
+
+echo "${YELLOW}**** Copying __root__stratux-pre-start.sh file... *****${WHITE}"
+
+chmod 755 ${SCRIPTDIR}/files/__lib__systemd__system__stratux.service
+cp -f ${SCRIPTDIR}/files/__root__stratux-pre-start.sh /root/stratux-pre-start.sh
 
 echo "${GREEN}...done${WHITE}"
 
@@ -544,7 +586,26 @@ echo
 echo "${YELLOW}**** Copying the hostapd_manager.sh utility... *****${WHITE}"
 
 chmod 755 ${SCRIPTDIR}/files/hostapd_manager.sh
-cp ${SCRIPTDIR}/files/hostapd_manager.sh /usr/bin/hostapd_manager.sh
+cp -f ${SCRIPTDIR}/files/hostapd_manager.sh /usr/bin/hostapd_manager.sh
+
+echo "${GREEN}...done${WHITE}"
+
+
+##############################################################
+## OLED screen setup
+##############################################################
+echo
+echo "${YELLOW}**** OLED screen setup... *****${WHITE}"
+
+cd /root
+git clone https://github.com/rm-hull/ssd1306
+cd ssd1306 && python setup.py install
+cd ssd1306 && python setup.py install
+
+cp ${SCRIPTDIR}/files/screen/screen.py /usr/bin/stratux-screen.py
+mkdir -p /etc/stratux-screen/
+cp -f ${SCRIPTDIR}/files/screen/stratux-logo-64x64.bmp /etc/stratux-screen/stratux-logo-64x64.bmp
+cp -f ${SCRIPTDIR}/files/screen/CnC_Red_Alert.ttf /etc/stratux-screen/CnC_Red_Alert.ttf
 
 echo "${GREEN}...done${WHITE}"
 
@@ -556,6 +617,7 @@ echo
 echo "${YELLOW}**** Disable ntpd autostart... *****${WHITE}"
 
 if which ntp >/dev/null; then
+    update-rc.d ntp disable
     systemctl disbable ntp
 fi
 
