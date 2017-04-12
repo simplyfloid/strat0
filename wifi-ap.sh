@@ -66,23 +66,9 @@ echo "${GREEN}...done${WHITE}"
 echo
 echo "${YELLOW}**** Setup /etc/hostapd/hostapd.conf *****${WHITE}"
 
-if [ "$REVISION" == "$RPI2BxREV" ] || [ "$REVISION" == "$RPI2ByREV" ] || [ "$REVISION" = "$RPI0xREV" ] || [ "$REVISION" = "$RPI0yREV" ]; then
-
 cat <<EOT > /etc/hostapd/hostapd-edimax.conf
 interface=$wifi_interface
 driver=rtl871xdrv
-ssid=stratux
-hw_mode=g
-channel=1
-wmm_enabled=1
-ieee80211n=1
-ignore_broadcast_ssid=0
-EOT
-
-fi
-
-cat <<EOT > /etc/hostapd/hostapd.conf
-interface=$wifi_interface
 ssid=stratux
 hw_mode=g
 channel=1
