@@ -39,13 +39,6 @@ if ! grep -q "dtparam=i2c_arm_baudrate=400000" "/boot/config.txt"; then
     echo "dtparam=i2c_arm_baudrate=400000" >>/boot/config.txt
 fi
 
-if [ "$REVISION" == "$RPI3BxREV" ] || [ "$REVISION" == "$RPI3ByREV" ]; then
-    # move RPi3 Bluetooth off of hardware UART to free up connection for GPS
-    if ! grep -q "dtoverlay=pi3-miniuart-bt" "/boot/config.txt"; then
-        echo "dtoverlay=pi3-miniuart-bt" >>/boot/config.txt
-    fi
-fi
-
 if ! grep -q "dtparam=act_led_trigger=none" "/boot/config.txt"; then
     echo "dtparam=act_led_trigger=none" >>/boot/config.txt
 fi
@@ -64,12 +57,6 @@ echo "${GREEN}...done${WHITE}"
 ##############################################################
 ##  Disable serial console
 ##############################################################
-echo
-echo "${YELLOW}**** Disable serial console... *****${WHITE}"
-
-sed -i /boot/cmdline.txt -e "s/console=ttyAMA0,[0-9]\+ //"
-
-echo "${GREEN}...done${WHITE}"
 
 
 ##############################################################
@@ -78,27 +65,22 @@ echo "${GREEN}...done${WHITE}"
 echo
 echo "${YELLOW}**** RPi 0/2 check to enable Edimax wifi dongle option... *****${WHITE}"
 
-if [ "$REVISION" == "$RPI2BxREV" ] || [ "$REVISION" == "$RPI2ByREV" ] || [ "$REVISION" == "$RPI0xREV" ] || [ "$REVISION" == "$RPI0yREV" ]; then
-    echo "${MAGENTA}copying the hostapd-edimax binary...${WHITE}"
+echo "${MAGENTA}copying the hostapd-edimax binary...${WHITE}"
 
-    rm -f /usr/sbin/hostapd-edimax
-    cd ${SCRIPTDIR}/files
+rm -f /usr/sbin/hostapd-edimax
+cd ${SCRIPTDIR}/files
 
-    # gunzip -k hostapd.gz
-    gunzip -c hostapd.gz >hostapd
-    if [ ! -f ./hostapd ]; then
-        echo "${BOLD}${RED}ERROR - hostapd doesn't exist, exiting...${WHITE}${NORMAL}"
-        exit
-    fi
-
+# gunzip -k hostapd.gz
+gunzip -c hostapd.gz >hostapd
+    
     # install the binary
-    mv ./hostapd /usr/sbin/hostapd-edimax
-    chmod +x /usr/sbin/hostapd-edimax
+mv ./hostapd /usr/sbin/hostapd-edimax
+chmod +x /usr/sbin/hostapd-edimax
 
-    if ! grep -q "options 8192cu rtw_power_mgnt=0 rtw_enusbss=0" "/etc/modprobe.d/8192cu.conf"; then
-        echo "options 8192cu rtw_power_mgnt=0 rtw_enusbss=0" >>/etc/modprobe.d/8192cu.conf
-    fi
+if ! grep -q "options 8192cu rtw_power_mgnt=0 rtw_enusbss=0" "/etc/modprobe.d/8192cu.conf"; then
+    echo "options 8192cu rtw_power_mgnt=0 rtw_enusbss=0" >>/etc/modprobe.d/8192cu.conf
 fi
+
 
 echo "${GREEN}...done${WHITE}"
 
